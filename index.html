@@ -170,13 +170,13 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
       </div>
 
       <div class="field">
-        <label>HAIR</label>
-        <select id="bHair"></select>
+        <label>BASE</label>
+        <select id="bBase"></select>
       </div>
 
       <div class="field">
-        <label>CLOTHING</label>
-        <input id="bCloth" placeholder="black shirt">
+        <label>FACE</label>
+        <input id="bFace" placeholder="black eyes, sharp nose">
       </div>
 
       <div class="field">
@@ -478,37 +478,37 @@ let lastBuilderPositive="";
 let lastBuilderNegative="";
 
 function updateBuilderOptions(){
-  const hairSelect=document.getElementById("bHair");
+  const baseSelect=document.getElementById("bBase");
 
-  const hairPrompts=data.prompts.filter(p=>
-    p.type==="positive" && p.category==="ヘアスタイル"
+  const basePrompts=data.prompts.filter(p=>
+    p.type==="positive" && p.category==="ベース"
   );
 
-  const currentHair=hairSelect.value;
-  hairSelect.innerHTML="";
+  const currentBase=baseSelect.value;
+  baseSelect.innerHTML="";
 
-  if(hairPrompts.length){
-    hairPrompts.forEach(p=>{
+  if(basePrompts.length){
+    basePrompts.forEach(p=>{
       const option=document.createElement("option");
       option.value=p.text;
       option.textContent=p.text;
-      hairSelect.appendChild(option);
+      baseSelect.appendChild(option);
     });
-    if(hairPrompts.some(p=>p.text===currentHair)){
-      hairSelect.value=currentHair;
+    if(basePrompts.some(p=>p.text===currentBase)){
+      baseSelect.value=currentBase;
     }
   }else{
     const option=document.createElement("option");
     option.value="";
-    option.textContent="（登録されたHAIRなし）";
-    hairSelect.appendChild(option);
+    option.textContent="（登録されたBASEなし）";
+    baseSelect.appendChild(option);
   }
 
   syncBuilderToFinal(true);
 }
 
 function getBuilderPositive(){
-  return [bChar.value,bHair.value,bCloth.value,bPose.value]
+  return [bChar.value,bBase.value,bFace.value,bPose.value]
     .map(x=>x.trim())
     .filter(Boolean)
     .join(", ");
