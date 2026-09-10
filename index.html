@@ -41,7 +41,7 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
 .search:focus{border-color:var(--accent)}
 .tabs{display:flex;gap:10px;overflow:auto;padding:20px 0 12px}
 .tab{
-  flex:0 0 auto;border:0;border-radius:999px;padding:10px 17px;
+  flex:0 0 auto;border:0;border-radius:999px;padding:7px 12px;
   background:white;color:#666;display:flex;align-items:center;gap:8px;
 }
 .tab.active{background:var(--accent);color:white}
@@ -117,6 +117,7 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
   .category-row .smallbtn{grid-column:auto}
 }
 .secondary{border:1px solid var(--line);background:white;border-radius:11px;padding:10px 14px}
+.toolbar-btn{border:1px solid var(--line); background:white; border-radius:9px; padding:8px 11px; font-size:12px; color:#555; white-space:nowrap;}
 @media(max-width:700px){
   .toolbar{align-items:flex-start;gap:10px}
   .toolbar > div:last-child{width:100%}
@@ -144,9 +145,9 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
   <div class="toolbar">
     <div id="count" class="count"></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-      <button class="secondary" onclick="openCategoryManager()">⚙ カテゴリ管理</button>
-      <button class="secondary" onclick="exportJSON()">↓ JSON書き出し</button>
-      <button class="secondary" onclick="document.getElementById('importFile').click()">↑ JSON読み込み</button>
+      <button class="toolbar-btn" onclick="openCategoryManager()">⚙ カテゴリ管理</button>
+      <button class="toolbar-btn" onclick="exportJSON()">↓ JSON出力</button>
+      <button class="toolbar-btn" onclick="document.getElementById('importFile').click()">↑ JSON読込</button>
       <input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
       <button class="primary" onclick="openPromptModal()">＋ プロンプト追加</button>
     </div>
@@ -302,14 +303,32 @@ function renderCategoryManager(){
     const row=document.createElement("div");
     row.className="category-row";
     row.innerHTML=`
-      <input type="text" value="${esc(c.name)}" aria-label="カテゴリ名">
-      <input type="color" value="${esc(c.color || "#6b5ce7")}" aria-label="カテゴリカラー">
-      <button class="smallbtn" onclick="saveCategoryEdit(${i},this)">保存</button>
-      <button class="smallbtn" onclick="deleteCategoryAt(${i})">削除</button>
-    `;
+  <input type="text" value="${esc(c.name)}" aria-label="カテゴリ名">
+  <input type="color" value="${esc(c.color || "#6b5ce7")}" aria-label="カテゴリカラー">
+  <button class="smallbtn" onclick="moveCategory(${i},-1)">↑</button>
+  <button class="smallbtn" onclick="moveCategory(${i},1)">↓</button>
+  <button class="smallbtn" onclick="saveCategoryEdit(${i},this)">保存</button>
+  <button class="smallbtn" onclick="deleteCategoryAt(${i})">削除</button>
+`;
     categoryList.appendChild(row);
   });
 }
+function moveCategory(index,direction){
+  const newIndex=index+direction;
+
+  if(newIndex<0 || newIndex>=data.categories.length){
+    return;
+  }
+
+  const temp=data.categories[index];
+  data.categories[index]=data.categories[newIndex];
+  data.categories[newIndex]=temp;
+
+  saveData();
+  render();
+  renderCategoryManager();
+}
+
 function saveCategoryEdit(i,button){
   const row=button.parentElement;
   const nameInput=row.querySelector('input[type="text"]');
