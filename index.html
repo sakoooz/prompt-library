@@ -84,6 +84,7 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
   width:100%;border:1px solid var(--line);border-radius:11px;padding:10px;background:#fafafa;outline:none
 }
 .field textarea{min-height:70px;resize:vertical}
+.final textarea{min-height:100px}
 .negative{
   margin-top:14px;padding:15px;background:#fafafa;border:1px solid var(--line);border-radius:13px
 }
@@ -157,17 +158,39 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
 
   <section class="builder">
     <h2>✦ PROMPT BUILDER</h2>
+
     <div class="builder-grid">
-      <div class="field"><label>CHARACTER</label><select id="bChar"><option>1boy, ((male solo))</option><option>1girl, ((female solo))</option><option>character base</option></select></div>
-      <div class="field"><label>HAIR</label><select id="bHair"><option>high skin fade</option><option>messy textured medium-length hair</option><option>symmetrical hairstyle, both sides slicked back</option><option>asymmetrical hairstyle, one side slicked back</option></select></div>
-      <div class="field"><label>CLOTHING</label><input id="bCloth" placeholder="black shirt"></div>
-      <div class="field"><label>POSE / EXPRESSION</label><input id="bPose" placeholder="arms crossed, serious expression"></div>
+      <div class="field">
+        <label>CHARACTER</label>
+        <select id="bChar">
+          <option>1boy, ((male solo))</option>
+          <option>1girl, ((female solo))</option>
+          <option>character base</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>HAIR</label>
+        <select id="bHair"></select>
+      </div>
+
+      <div class="field">
+        <label>CLOTHING</label>
+        <input id="bCloth" placeholder="black shirt">
+      </div>
+
+      <div class="field">
+        <label>POSE / EXPRESSION</label>
+        <input id="bPose" placeholder="arms crossed, serious expression">
+      </div>
     </div>
 
     <div class="negative">
       <strong>NEGATIVE BUILDER</strong>
-      <div style="font-size:12px;color:#777;margin-top:4px">自分で登録したNegative部品から、必要なものだけ選択</div>
-      <div class="checks">
+      <div style="font-size:12px;color:#777;margin-top:4px">
+        基本セットから、必要なものだけ選択
+      </div>
+      <div id="negativeChecks" class="checks">
         <label><input type="checkbox" value="bad hands, malformed hands, extra fingers, missing fingers" checked> 手・指</label>
         <label><input type="checkbox" value="bad anatomy, deformed body, malformed limbs" checked> 人体</label>
         <label><input type="checkbox" value="bad face, deformed face, asymmetrical eyes"> 顔</label>
@@ -175,8 +198,17 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
         <label><input type="checkbox" value="low quality, worst quality, lowres"> 低品質</label>
       </div>
     </div>
-    <div class="field final"><label>FINAL PROMPT</label><textarea id="finalPrompt" readonly></textarea></div>
-    <div class="field final"><label>FINAL NEGATIVE</label><textarea id="finalNegative" readonly></textarea></div>
+
+    <div class="field final">
+      <label>FINAL PROMPT</label>
+      <textarea id="finalPrompt" placeholder="ここにPositiveプロンプトを自由に貼り付け・編集できます。"></textarea>
+    </div>
+
+    <div class="field final">
+      <label>FINAL NEGATIVE</label>
+      <textarea id="finalNegative" placeholder="ここにNegativeプロンプトを自由に貼り付け・編集できます。"></textarea>
+    </div>
+
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
       <button class="primary" onclick="copyPositive()">📋 Positiveをコピー</button>
       <button class="primary" onclick="copyNegative()">📋 Negativeをコピー</button>
@@ -290,7 +322,7 @@ function addCategory(){
   const color=prompt("アクセントカラーを入力（例：#ff6688）","#6b5ce7")||"#6b5ce7";
   if(!/^#[0-9a-fA-F]{6}$/.test(color)){alert("カラーは #RRGGBB 形式で入力してください。");return;}
   data.categories.push({name,color});
-  saveData();active=name;render();updateCategoryOptions();
+  saveData();active=name;render();updateCategoryOptions();updateBuilderOptions();
 }
 function openCategoryManager(){
   renderCategoryManager();
@@ -344,7 +376,7 @@ function saveCategoryEdit(i,button){
   data.categories[i].color=newColor;
   data.prompts.forEach(p=>{if(p.category===oldName)p.category=newName;});
   if(active===oldName)active=newName;
-  saveData();updateCategoryOptions();render();renderCategoryManager();
+  saveData();updateCategoryOptions();render();renderCategoryManager();updateBuilderOptions();
 }
 function deleteCategoryAt(i){
   deleteCategory(data.categories[i].name);
@@ -397,7 +429,7 @@ function importJSON(event){
         });
       }
       active="ALL";
-      saveData();updateCategoryOptions();render();
+      saveData();updateCategoryOptions();render();updateBuilderOptions();
       alert("JSONを読み込みました。");
     }catch(e){
       alert("JSONの形式を読み込めませんでした。");
@@ -420,7 +452,7 @@ function deleteCategory(name){
   if(!confirm(`「${name}」カテゴリを削除しますか？`)) return;
   data.categories=data.categories.filter(c=>c.name!==name);
   if(active===name) active="ALL";
-  saveData(); updateCategoryOptions(); render();
+  saveData(); updateCategoryOptions(); render(); updateBuilderOptions();
 }
 function openPromptModal(index=null){
   editIndex=index;
@@ -435,28 +467,109 @@ function closeModal(){modal.classList.remove("show");editIndex=null;}
 function savePrompt(){
   const p={title:pTitle.value.trim()||"無題",category:pCategory.value,type:pType.value,text:pText.value.trim(),tags:pTags.value.split(",").map(x=>x.trim()).filter(Boolean)};
   if(editIndex===null)data.prompts.unshift(p);else data.prompts[editIndex]=p;
-  saveData();closeModal();render();
+  saveData();closeModal();render();updateBuilderOptions();
 }
 function editPrompt(i){openPromptModal(i)}
-function deletePrompt(i){if(confirm("このプロンプトを削除しますか？")){data.prompts.splice(i,1);saveData();render();}}
+function deletePrompt(i){if(confirm("このプロンプトを削除しますか？")){data.prompts.splice(i,1);saveData();render();updateBuilderOptions();}}
 async function copyText(i){await navigator.clipboard.writeText(data.prompts[i].text);alert("コピーしました。");}
-function build(){
-  finalPrompt.value=[bChar.value,bHair.value,bCloth.value,bPose.value].filter(x=>x.trim()).join(", ");
-  finalNegative.value=[...document.querySelectorAll(".checks input:checked")].map(x=>x.value).join(", ");
+let finalPromptManual=false;
+let finalNegativeManual=false;
+let lastBuilderPositive="";
+let lastBuilderNegative="";
+
+function updateBuilderOptions(){
+  const hairSelect=document.getElementById("bHair");
+
+  const hairPrompts=data.prompts.filter(p=>
+    p.type==="positive" && p.category==="ヘアスタイル"
+  );
+
+  const currentHair=hairSelect.value;
+  hairSelect.innerHTML="";
+
+  if(hairPrompts.length){
+    hairPrompts.forEach(p=>{
+      const option=document.createElement("option");
+      option.value=p.text;
+      option.textContent=p.text;
+      hairSelect.appendChild(option);
+    });
+    if(hairPrompts.some(p=>p.text===currentHair)){
+      hairSelect.value=currentHair;
+    }
+  }else{
+    const option=document.createElement("option");
+    option.value="";
+    option.textContent="（登録されたHAIRなし）";
+    hairSelect.appendChild(option);
+  }
+
+  syncBuilderToFinal(true);
 }
+
+function getBuilderPositive(){
+  return [bChar.value,bHair.value,bCloth.value,bPose.value]
+    .map(x=>x.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function getBuilderNegative(){
+  return [...document.querySelectorAll("#negativeChecks input:checked")]
+    .map(x=>x.value.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function syncBuilderToFinal(force=false){
+  const positive=getBuilderPositive();
+  const negative=getBuilderNegative();
+
+  if(force || !finalPromptManual || finalPrompt.value.trim()==="" || finalPrompt.value===lastBuilderPositive){
+    finalPrompt.value=positive;
+    finalPromptManual=false;
+  }
+
+  if(force || !finalNegativeManual || finalNegative.value.trim()==="" || finalNegative.value===lastBuilderNegative){
+    finalNegative.value=negative;
+    finalNegativeManual=false;
+  }
+
+  lastBuilderPositive=positive;
+  lastBuilderNegative=negative;
+}
+
+function markFinalPromptManual(){
+  if(finalPrompt.value!==lastBuilderPositive) finalPromptManual=true;
+}
+
+function markFinalNegativeManual(){
+  if(finalNegative.value!==lastBuilderNegative) finalNegativeManual=true;
+}
+
 async function copyPositive(){
-  build();
   await navigator.clipboard.writeText(finalPrompt.value);
   alert("Positiveプロンプトをコピーしました。");
 }
+
 async function copyNegative(){
-  build();
   await navigator.clipboard.writeText(finalNegative.value);
   alert("Negativeプロンプトをコピーしました。");
 }
-document.querySelectorAll(".builder input,.builder select").forEach(x=>x.addEventListener("input",build));
+
 search.addEventListener("input",render);
-updateCategoryOptions();render();build();
+
+document.querySelectorAll(".builder input,.builder select").forEach(x=>{
+  x.addEventListener("input",()=>syncBuilderToFinal(false));
+  x.addEventListener("change",()=>syncBuilderToFinal(false));
+});
+
+finalPrompt.addEventListener("input",markFinalPromptManual);
+finalNegative.addEventListener("input",markFinalNegativeManual);
+
+updateCategoryOptions();
+render();
+updateBuilderOptions();
 </script>
 </body>
 </html>
