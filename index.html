@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.png" type="image/png">
 <title>PROMPT LIBRARY</title>
 <style>
 :root{
@@ -45,8 +46,6 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
 }
 .tab.active{background:var(--accent);color:white}
 .dot{width:9px;height:9px;border-radius:50%;background:currentColor}
-.cat-delete{border:0;background:white;color:#aaa;width:30px;height:38px;font-size:18px;padding:0 8px 0 2px}
-.cat-delete:hover{color:#d94f6d;background:#fafafa}
 .toolbar{display:flex;justify-content:space-between;align-items:center;margin:12px 0 18px}
 .count{font-size:13px;color:var(--muted)}
 .primary{
@@ -101,8 +100,27 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
 .form input,.form textarea,.form select{width:100%;padding:11px;border:1px solid var(--line);border-radius:11px}
 .form textarea{min-height:150px}
 .dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.category-row{
+  display:grid;grid-template-columns:1fr 54px auto auto;gap:8px;align-items:center;
+  padding:10px;border:1px solid var(--line);border-radius:12px;background:#fafafa
+}
+.category-row input[type="text"]{min-width:0;padding:10px;border:1px solid var(--line);border-radius:9px}
+.category-row input[type="color"]{
+  width:48px;height:38px;padding:3px;border:1px solid var(--line);border-radius:9px;background:white
+}
+.smallbtn{border:1px solid var(--line);background:white;border-radius:9px;padding:8px 10px}
+.cat-delete{
+  border:0;color:#fff;width:34px;height:40px;font-size:18px;padding:0 10px 0 2px;
+}
+@media(max-width:700px){
+  .category-row{grid-template-columns:1fr 48px;gap:7px}
+  .category-row .smallbtn{grid-column:auto}
+}
 .secondary{border:1px solid var(--line);background:white;border-radius:11px;padding:10px 14px}
 @media(max-width:700px){
+  .toolbar{align-items:flex-start;gap:10px}
+  .toolbar > div:last-child{width:100%}
+  .toolbar > div:last-child button{flex:1}
   .app{padding:20px 14px 100px}
   .grid,.builder-grid{grid-template-columns:1fr}
   .topbar{gap:12px}
@@ -125,7 +143,13 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
 
   <div class="toolbar">
     <div id="count" class="count"></div>
-    <button class="primary" onclick="openPromptModal()">＋ プロンプト追加</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+      <button class="secondary" onclick="openCategoryManager()">⚙ カテゴリ管理</button>
+      <button class="secondary" onclick="exportJSON()">↓ JSON書き出し</button>
+      <button class="secondary" onclick="document.getElementById('importFile').click()">↑ JSON読み込み</button>
+      <input id="importFile" type="file" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
+      <button class="primary" onclick="openPromptModal()">＋ プロンプト追加</button>
+    </div>
   </div>
 
   <main id="cards" class="grid"></main>
@@ -157,6 +181,17 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
       <button class="primary" onclick="copyNegative()">📋 Negativeをコピー</button>
     </div>
   </section>
+</div>
+
+<div id="categoryModal" class="modal">
+  <div class="dialog">
+    <h2>カテゴリ管理</h2>
+    <div id="categoryList" style="display:grid;gap:10px"></div>
+    <div class="dialog-actions">
+      <button class="secondary" onclick="closeCategoryManager()">閉じる</button>
+      <button class="primary" onclick="addCategory();renderCategoryManager()">＋ カテゴリ追加</button>
+    </div>
+  </div>
 </div>
 
 <div id="modal" class="modal">
@@ -204,23 +239,26 @@ function renderTabs(){
 }
 function addTab(key,label,color){
   const wrap=document.createElement("div");
-  wrap.style.cssText="display:flex;align-items:center;flex:0 0 auto;background:white;border-radius:999px;overflow:hidden;";
+  wrap.style.cssText="display:flex;align-items:center;flex:0 0 auto;border-radius:999px;overflow:hidden;";
   if(key==="__NEW__"){
-    const b=document.createElement("button"); b.className="tab"; b.onclick=addCategory;
-    b.innerHTML=label; wrap.appendChild(b); tabs.appendChild(wrap); return;
+    const b=document.createElement("button");
+    b.className="tab";
+    b.onclick=addCategory;
+    b.innerHTML=label;
+    wrap.appendChild(b);
+    tabs.appendChild(wrap);
+    return;
   }
-  const b=document.createElement("button"); b.className="tab"+(active===key?" active":"");
+  const b=document.createElement("button");
+  b.className="tab"+(active===key?" active":"");
+  b.style.background=color || "var(--accent)";
+  b.style.color="#fff";
   b.onclick=()=>{active=key;render();};
-  b.innerHTML=(color?`<span class="dot" style="color:${color}"></span>`:"")+label;
+  b.innerHTML=esc(label);
   wrap.appendChild(b);
-  if(key!=="ALL"){
-    const del=document.createElement("button");
-    del.className="cat-delete"; del.title="カテゴリを削除"; del.innerHTML="×";
-    del.onclick=(e)=>{e.stopPropagation();deleteCategory(key);};
-    wrap.appendChild(del);
-  }
   tabs.appendChild(wrap);
 }
+
 function render(){
   renderTabs();
   const q=search.value.trim().toLowerCase();
@@ -249,8 +287,108 @@ function addCategory(){
   if(!name)return;
   if(data.categories.some(c=>c.name===name)){alert("そのカテゴリは既にあります。");return;}
   const color=prompt("アクセントカラーを入力（例：#ff6688）","#6b5ce7")||"#6b5ce7";
-  data.categories.push({name,color});saveData();active=name;render();updateCategoryOptions();
+  if(!/^#[0-9a-fA-F]{6}$/.test(color)){alert("カラーは #RRGGBB 形式で入力してください。");return;}
+  data.categories.push({name,color});
+  saveData();active=name;render();updateCategoryOptions();
 }
+function openCategoryManager(){
+  renderCategoryManager();
+  categoryModal.classList.add("show");
+}
+function closeCategoryManager(){categoryModal.classList.remove("show");}
+function renderCategoryManager(){
+  categoryList.innerHTML="";
+  data.categories.forEach((c,i)=>{
+    const row=document.createElement("div");
+    row.className="category-row";
+    row.innerHTML=`
+      <input type="text" value="${esc(c.name)}" aria-label="カテゴリ名">
+      <input type="color" value="${esc(c.color || "#6b5ce7")}" aria-label="カテゴリカラー">
+      <button class="smallbtn" onclick="saveCategoryEdit(${i},this)">保存</button>
+      <button class="smallbtn" onclick="deleteCategoryAt(${i})">削除</button>
+    `;
+    categoryList.appendChild(row);
+  });
+}
+function saveCategoryEdit(i,button){
+  const row=button.parentElement;
+  const nameInput=row.querySelector('input[type="text"]');
+  const colorInput=row.querySelector('input[type="color"]');
+  const oldName=data.categories[i].name;
+  const newName=nameInput.value.trim();
+  const newColor=colorInput.value;
+  if(!newName){alert("カテゴリ名を入力してください。");return;}
+  if(data.categories.some((c,idx)=>idx!==i && c.name===newName)){
+    alert("そのカテゴリ名は既にあります。");return;
+  }
+  data.categories[i].name=newName;
+  data.categories[i].color=newColor;
+  data.prompts.forEach(p=>{if(p.category===oldName)p.category=newName;});
+  if(active===oldName)active=newName;
+  saveData();updateCategoryOptions();render();renderCategoryManager();
+}
+function deleteCategoryAt(i){
+  deleteCategory(data.categories[i].name);
+  renderCategoryManager();
+}
+function exportJSON(){
+  const payload={
+    format:"PROMPT_LIBRARY",
+    version:1,
+    exportedAt:new Date().toISOString(),
+    categories:data.categories,
+    prompts:data.prompts
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="prompt-library-backup.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+function importJSON(event){
+  const file=event.target.files?.[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const incoming=JSON.parse(reader.result);
+      if(!Array.isArray(incoming.categories)||!Array.isArray(incoming.prompts)) throw new Error("invalid");
+      if(!confirm("現在のライブラリをJSONの内容で置き換えます。よろしいですか？")) return;
+      data={
+        categories:incoming.categories.map(c=>({
+          name:String(c.name||"カテゴリ"),
+          color:/^#[0-9a-fA-F]{6}$/.test(String(c.color))?String(c.color):"#6b5ce7"
+        })),
+        prompts:incoming.prompts.map(p=>({
+          title:String(p.title||"無題"),
+          category:String(p.category||""),
+          type:p.type==="negative"?"negative":"positive",
+          text:String(p.text||""),
+          tags:Array.isArray(p.tags)?p.tags.map(String):[]
+        }))
+      };
+      if(data.categories.length){
+        const fallback=data.categories[0].name;
+        data.prompts.forEach(p=>{
+          if(!data.categories.some(c=>c.name===p.category))p.category=fallback;
+        });
+      }
+      active="ALL";
+      saveData();updateCategoryOptions();render();
+      alert("JSONを読み込みました。");
+    }catch(e){
+      alert("JSONの形式を読み込めませんでした。");
+    }finally{
+      event.target.value="";
+    }
+  };
+  reader.readAsText(file);
+}
+
 function updateCategoryOptions(){
   pCategory.innerHTML=data.categories.map(c=>`<option>${esc(c.name)}</option>`).join("");
 }
