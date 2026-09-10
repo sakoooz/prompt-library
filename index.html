@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PROMPT LIBRARY</title>
+<style>
+:root{
+  --accent:#6b5ce7;
+  --accent-soft:#eeeaff;
+  --bg:#f4f4f6;
+  --card:#ffffff;
+  --text:#16161a;
+  --muted:#77777f;
+  --line:#e7e7eb;
+  --shadow:0 8px 24px rgba(30,30,40,.06);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Noto Sans JP",sans-serif;
+}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+.app{max-width:1180px;margin:auto;padding:28px 24px 100px}
+.topbar{display:flex;align-items:center;gap:18px;margin-bottom:24px}
+.logo{
+  width:58px;height:58px;border:2px solid var(--accent);border-radius:18px;
+  display:grid;place-items:center;color:var(--accent);font-size:27px;background:white;
+}
+h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
+.sub{font-size:12px;color:var(--muted);margin-top:3px}
+.search{
+  background:white;border:1px solid var(--line);border-radius:18px;
+  padding:14px 18px;font-size:17px;outline:none;width:100%;
+  box-shadow:var(--shadow);
+}
+.search:focus{border-color:var(--accent)}
+.tabs{display:flex;gap:10px;overflow:auto;padding:20px 0 12px}
+.tab{
+  flex:0 0 auto;border:0;border-radius:999px;padding:10px 17px;
+  background:white;color:#666;display:flex;align-items:center;gap:8px;
+}
+.tab.active{background:var(--accent);color:white}
+.dot{width:9px;height:9px;border-radius:50%;background:currentColor}
+.cat-delete{border:0;background:white;color:#aaa;width:30px;height:38px;font-size:18px;padding:0 8px 0 2px}
+.cat-delete:hover{color:#d94f6d;background:#fafafa}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin:12px 0 18px}
+.count{font-size:13px;color:var(--muted)}
+.primary{
+  border:0;border-radius:13px;padding:11px 16px;background:var(--accent);color:white;font-weight:700;
+}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:20px;
+  padding:20px;box-shadow:var(--shadow);position:relative;
+}
+.card-top{display:flex;justify-content:space-between;gap:12px}
+.card h2{font-size:17px;margin:0 0 7px}
+.type{font-size:12px;color:var(--muted)}
+.prompt{
+  margin:15px 0;padding:14px;background:#f7f7f9;border-radius:12px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;
+  line-height:1.65;max-height:105px;overflow:hidden;white-space:pre-wrap;
+}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11px;color:var(--accent);background:var(--accent-soft);padding:5px 8px;border-radius:7px}
+.actions{display:flex;gap:7px}
+.iconbtn{
+  border:1px solid var(--line);background:white;border-radius:9px;padding:7px 9px;color:#666;
+}
+.copy{background:var(--accent);border-color:var(--accent);color:white;font-weight:650}
+.empty{text-align:center;color:var(--muted);padding:70px 20px}
+.builder{
+  margin-top:30px;background:white;border:1px solid var(--line);border-radius:22px;
+  padding:22px;box-shadow:var(--shadow)
+}
+.builder h2{margin:0 0 17px;font-size:19px}
+.builder-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.field select,.field textarea,.field input{
+  width:100%;border:1px solid var(--line);border-radius:11px;padding:10px;background:#fafafa;outline:none
+}
+.field textarea{min-height:70px;resize:vertical}
+.negative{
+  margin-top:14px;padding:15px;background:#fafafa;border:1px solid var(--line);border-radius:13px
+}
+.checks{display:flex;flex-wrap:wrap;gap:10px;margin-top:9px}
+.checks label{font-size:12px;background:white;border:1px solid var(--line);padding:8px 10px;border-radius:9px}
+.final{margin-top:14px}
+.modal{
+  position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;padding:20px;z-index:10
+}
+.modal.show{display:flex}
+.dialog{background:white;width:min(620px,100%);max-height:90vh;overflow:auto;border-radius:22px;padding:23px}
+.dialog h2{margin-top:0}
+.form{display:grid;gap:13px}
+.form input,.form textarea,.form select{width:100%;padding:11px;border:1px solid var(--line);border-radius:11px}
+.form textarea{min-height:150px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.secondary{border:1px solid var(--line);background:white;border-radius:11px;padding:10px 14px}
+@media(max-width:700px){
+  .app{padding:20px 14px 100px}
+  .grid,.builder-grid{grid-template-columns:1fr}
+  .topbar{gap:12px}
+  .logo{width:50px;height:50px;border-radius:16px}
+  h1{font-size:22px}
+  .card{border-radius:18px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="logo">✦</div>
+    <div><h1>PROMPT LIBRARY</h1><div class="sub">Image Generation Prompt Manager</div></div>
+  </header>
+
+  <input id="search" class="search" placeholder="⌕  プロンプトを検索">
+
+  <nav id="tabs" class="tabs"></nav>
+
+  <div class="toolbar">
+    <div id="count" class="count"></div>
+    <button class="primary" onclick="openPromptModal()">＋ プロンプト追加</button>
+  </div>
+
+  <main id="cards" class="grid"></main>
+
+  <section class="builder">
+    <h2>✦ PROMPT BUILDER</h2>
+    <div class="builder-grid">
+      <div class="field"><label>CHARACTER</label><select id="bChar"><option>1boy, ((male solo))</option><option>1girl, ((female solo))</option><option>character base</option></select></div>
+      <div class="field"><label>HAIR</label><select id="bHair"><option>high skin fade</option><option>messy textured medium-length hair</option><option>symmetrical hairstyle, both sides slicked back</option><option>asymmetrical hairstyle, one side slicked back</option></select></div>
+      <div class="field"><label>CLOTHING</label><input id="bCloth" placeholder="black shirt"></div>
+      <div class="field"><label>POSE / EXPRESSION</label><input id="bPose" placeholder="arms crossed, serious expression"></div>
+    </div>
+
+    <div class="negative">
+      <strong>NEGATIVE BUILDER</strong>
+      <div style="font-size:12px;color:#777;margin-top:4px">自分で登録したNegative部品から、必要なものだけ選択</div>
+      <div class="checks">
+        <label><input type="checkbox" value="bad hands, malformed hands, extra fingers, missing fingers" checked> 手・指</label>
+        <label><input type="checkbox" value="bad anatomy, deformed body, malformed limbs" checked> 人体</label>
+        <label><input type="checkbox" value="bad face, deformed face, asymmetrical eyes"> 顔</label>
+        <label><input type="checkbox" value="blurry background, distorted background"> 背景</label>
+        <label><input type="checkbox" value="low quality, worst quality, lowres"> 低品質</label>
+      </div>
+    </div>
+    <div class="field final"><label>FINAL PROMPT</label><textarea id="finalPrompt" readonly></textarea></div>
+    <div class="field final"><label>FINAL NEGATIVE</label><textarea id="finalNegative" readonly></textarea></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="primary" onclick="copyPositive()">📋 Positiveをコピー</button>
+      <button class="primary" onclick="copyNegative()">📋 Negativeをコピー</button>
+    </div>
+  </section>
+</div>
+
+<div id="modal" class="modal">
+  <div class="dialog">
+    <h2 id="modalTitle">プロンプトを追加</h2>
+    <div class="form">
+      <input id="pTitle" placeholder="タイトル">
+      <select id="pCategory"></select>
+      <select id="pType"><option value="positive">ポジティブ</option><option value="negative">ネガティブ</option></select>
+      <textarea id="pText" placeholder="プロンプト本文"></textarea>
+      <input id="pTags" placeholder="タグ（カンマ区切り）">
+    </div>
+    <div class="dialog-actions">
+      <button class="secondary" onclick="closeModal()">キャンセル</button>
+      <button class="primary" onclick="savePrompt()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY="prompt-library-v1";
+let data=JSON.parse(localStorage.getItem(KEY)||"null")||{
+  categories:[
+    {name:"ヘアスタイル",color:"#a98a64"},
+    {name:"ネガティブ",color:"#5f55dd"},
+    {name:"衣装",color:"#4caf6d"},
+    {name:"ポーズ",color:"#e26c8c"}
+  ],
+  prompts:[
+    {title:"襟足を短くするポジティブ",category:"ヘアスタイル",type:"positive",text:"high skin fade, fade on back, back of head shaved, shaved nape, clean nape, tight fade",tags:["短髪","フェード"]},
+    {title:"襟足短い無造作ミディアム",category:"ヘアスタイル",type:"positive",text:"messy textured medium-length hair, medium-length top, short tapered nape, clean nape",tags:["ミディアム","無造作"]},
+    {title:"左右対称オールバック",category:"ヘアスタイル",type:"positive",text:"symmetrical hairstyle, both sides slicked back, curtain bangs, straight center bangs",tags:["オールバック","ネガティブ"]},
+    {title:"右側だけオールバック",category:"ヘアスタイル",type:"positive",text:"asymmetrical hairstyle, one side slicked back hair, viewer left side slicked back, viewer right side natural",tags:["オールバック"]},
+    {title:"代理ヘアスタイル・ネガティブ",category:"ヘアスタイル",type:"negative",text:"inner color hair, dyed hair ends, colored tips, two-tone hair, split color hair, gradient hair",tags:["髪色","ネガティブ"]}
+  ]
+};
+let active="ALL", editIndex=null;
+
+function saveData(){localStorage.setItem(KEY,JSON.stringify(data));}
+function renderTabs(){
+  tabs.innerHTML="";
+  addTab("ALL","すべて",null);
+  data.categories.forEach(c=>addTab(c.name,c.name,c.color));
+  addTab("__NEW__","＋ カテゴリ追加",null);
+}
+function addTab(key,label,color){
+  const wrap=document.createElement("div");
+  wrap.style.cssText="display:flex;align-items:center;flex:0 0 auto;background:white;border-radius:999px;overflow:hidden;";
+  if(key==="__NEW__"){
+    const b=document.createElement("button"); b.className="tab"; b.onclick=addCategory;
+    b.innerHTML=label; wrap.appendChild(b); tabs.appendChild(wrap); return;
+  }
+  const b=document.createElement("button"); b.className="tab"+(active===key?" active":"");
+  b.onclick=()=>{active=key;render();};
+  b.innerHTML=(color?`<span class="dot" style="color:${color}"></span>`:"")+label;
+  wrap.appendChild(b);
+  if(key!=="ALL"){
+    const del=document.createElement("button");
+    del.className="cat-delete"; del.title="カテゴリを削除"; del.innerHTML="×";
+    del.onclick=(e)=>{e.stopPropagation();deleteCategory(key);};
+    wrap.appendChild(del);
+  }
+  tabs.appendChild(wrap);
+}
+function render(){
+  renderTabs();
+  const q=search.value.trim().toLowerCase();
+  const arr=data.prompts.filter(p=>(active==="ALL"||p.category===active) &&
+    (!q || [p.title,p.text,p.category,...p.tags].join(" ").toLowerCase().includes(q)));
+  count.textContent=`${arr.length} 件`;
+  cards.innerHTML="";
+  if(!arr.length){cards.innerHTML='<div class="empty" style="grid-column:1/-1">該当するプロンプトがありません。</div>';return;}
+  arr.forEach((p)=> {
+    const real=data.prompts.indexOf(p);
+    const cat=data.categories.find(c=>c.name===p.category);
+    cards.innerHTML+=`
+      <article class="card">
+        <div class="card-top"><div><h2>${esc(p.title)}</h2><div class="type">${p.type==="negative"?"ネガティブ":"ポジティブ"}</div></div><button class="iconbtn" onclick="deletePrompt(${real})">×</button></div>
+        <div class="prompt">${esc(p.text)}</div>
+        <div class="meta">
+          <div class="tags"><span class="tag" style="color:${cat?.color||'var(--accent)'}">${esc(p.category)}</span>${p.tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join("")}</div>
+          <div class="actions"><button class="iconbtn" onclick="editPrompt(${real})">編集</button><button class="iconbtn copy" onclick="copyText(${real})">コピー</button></div>
+        </div>
+      </article>`;
+  });
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+function addCategory(){
+  const name=prompt("新しいカテゴリ名を入力してください");
+  if(!name)return;
+  if(data.categories.some(c=>c.name===name)){alert("そのカテゴリは既にあります。");return;}
+  const color=prompt("アクセントカラーを入力（例：#ff6688）","#6b5ce7")||"#6b5ce7";
+  data.categories.push({name,color});saveData();active=name;render();updateCategoryOptions();
+}
+function updateCategoryOptions(){
+  pCategory.innerHTML=data.categories.map(c=>`<option>${esc(c.name)}</option>`).join("");
+}
+function deleteCategory(name){
+  const used=data.prompts.some(p=>p.category===name);
+  if(used){
+    alert("このカテゴリにはプロンプトが登録されています。\n先に別のカテゴリへ移動してから削除してください。");
+    return;
+  }
+  if(!confirm(`「${name}」カテゴリを削除しますか？`)) return;
+  data.categories=data.categories.filter(c=>c.name!==name);
+  if(active===name) active="ALL";
+  saveData(); updateCategoryOptions(); render();
+}
+function openPromptModal(index=null){
+  editIndex=index;
+  modalTitle.textContent=index===null?"プロンプトを追加":"プロンプトを編集";
+  if(index===null){pTitle.value="";pText.value="";pTags.value="";pType.value="positive";pCategory.value=data.categories[0]?.name||"";}
+  else{
+    const p=data.prompts[index];pTitle.value=p.title;pText.value=p.text;pTags.value=p.tags.join(",");pType.value=p.type;pCategory.value=p.category;
+  }
+  modal.classList.add("show");
+}
+function closeModal(){modal.classList.remove("show");editIndex=null;}
+function savePrompt(){
+  const p={title:pTitle.value.trim()||"無題",category:pCategory.value,type:pType.value,text:pText.value.trim(),tags:pTags.value.split(",").map(x=>x.trim()).filter(Boolean)};
+  if(editIndex===null)data.prompts.unshift(p);else data.prompts[editIndex]=p;
+  saveData();closeModal();render();
+}
+function editPrompt(i){openPromptModal(i)}
+function deletePrompt(i){if(confirm("このプロンプトを削除しますか？")){data.prompts.splice(i,1);saveData();render();}}
+async function copyText(i){await navigator.clipboard.writeText(data.prompts[i].text);alert("コピーしました。");}
+function build(){
+  finalPrompt.value=[bChar.value,bHair.value,bCloth.value,bPose.value].filter(x=>x.trim()).join(", ");
+  finalNegative.value=[...document.querySelectorAll(".checks input:checked")].map(x=>x.value).join(", ");
+}
+async function copyPositive(){
+  build();
+  await navigator.clipboard.writeText(finalPrompt.value);
+  alert("Positiveプロンプトをコピーしました。");
+}
+async function copyNegative(){
+  build();
+  await navigator.clipboard.writeText(finalNegative.value);
+  alert("Negativeプロンプトをコピーしました。");
+}
+document.querySelectorAll(".builder input,.builder select").forEach(x=>x.addEventListener("input",build));
+search.addEventListener("input",render);
+updateCategoryOptions();render();build();
+</script>
+</body>
+</html>
