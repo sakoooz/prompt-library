@@ -85,6 +85,7 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
 }
 .field textarea{min-height:70px;resize:vertical}
 .final textarea{min-height:100px}
+#finalPrompt{min-height:180px}
 .negative{
   margin-top:14px;padding:15px;background:#fafafa;border:1px solid var(--line);border-radius:13px
 }
@@ -174,15 +175,6 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
         <select id="bBase"></select>
       </div>
 
-      <div class="field">
-        <label>FACE</label>
-        <input id="bFace" placeholder="black eyes, sharp nose">
-      </div>
-
-      <div class="field">
-        <label>POSE / EXPRESSION</label>
-        <input id="bPose" placeholder="arms crossed, serious expression">
-      </div>
     </div>
 
     <div class="negative">
@@ -197,7 +189,7 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
         <label><input type="checkbox" value="blurry background, distorted background"> 背景</label>
         <label><input type="checkbox" value="text, logo, signature, watermark, letters, words, typography"> 文字</label>
         <label><input type="checkbox" value="photorealistic"> 実写</label>
-        <label><input type="checkbox" value="low quality, worst quality, low resolution, lowres"> 低品質</label>
+        <label><input type="checkbox" value="low quality, worst quality, low resolution, lowres, photorealistic"> 低品質</label>
       </div>
     </div>
 
@@ -250,19 +242,70 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
 const KEY="prompt-library-v1";
 let data=JSON.parse(localStorage.getItem(KEY)||"null")||{
   categories:[
+    {name:"ベース",color:"#a98a64"},
     {name:"ヘアスタイル",color:"#a98a64"},
     {name:"ネガティブ",color:"#5f55dd"},
     {name:"衣装",color:"#4caf6d"},
     {name:"ポーズ",color:"#e26c8c"}
   ],
   prompts:[
-    {title:"襟足を短くするポジティブ",category:"ヘアスタイル",type:"positive",text:"high skin fade, fade on back, back of head shaved, shaved nape, clean nape, tight fade",tags:["短髪","フェード"]},
-    {title:"襟足短い無造作ミディアム",category:"ヘアスタイル",type:"positive",text:"messy textured medium-length hair, medium-length top, short tapered nape, clean nape",tags:["ミディアム","無造作"]},
-    {title:"左右対称オールバック",category:"ヘアスタイル",type:"positive",text:"symmetrical hairstyle, both sides slicked back, curtain bangs, straight center bangs",tags:["オールバック","ネガティブ"]},
-    {title:"右側だけオールバック",category:"ヘアスタイル",type:"positive",text:"asymmetrical hairstyle, one side slicked back hair, viewer left side slicked back, viewer right side natural",tags:["オールバック"]},
-    {title:"代理ヘアスタイル・ネガティブ",category:"ヘアスタイル",type:"negative",text:"inner color hair, dyed hair ends, colored tips, two-tone hair, split color hair, gradient hair",tags:["髪色","ネガティブ"]}
+    {title:"画質保証",category:"ベース",type:"positive",text:"masterpiece, best quality, ultra detailed, highly detailed, high resolution",tags:["基本","画質"]},
+    {title:"アニメ塗り",category:"ベース",type:"positive",text:"anime coloring, vivid color, masterpiece, best quality",tags:["塗り","アニメ"]},
+    {title:"強いコントラスト",category:"ベース",type:"positive",text:"strong contrast, deep shadows, dramatic lighting,",tags:["コントラスト","影"]}
   ]
 };
+
+const DEFAULT_CATEGORIES=[
+  {name:"ベース",color:"#a98a64"},
+  {name:"ヘアスタイル",color:"#a98a64"},
+  {name:"ネガティブ",color:"#5f55dd"},
+  {name:"衣装",color:"#4caf6d"},
+  {name:"ポーズ",color:"#e26c8c"}
+];
+
+const DEFAULT_PROMPTS=[
+  {title:"画質保証",category:"ベース",type:"positive",text:"masterpiece, best quality, ultra detailed, highly detailed, high resolution",tags:["基本","画質"]},
+  {title:"アニメ塗り",category:"ベース",type:"positive",text:"anime coloring, vivid color, masterpiece, best quality",tags:["塗り","アニメ"]},
+  {title:"強いコントラスト",category:"ベース",type:"positive",text:"strong contrast, deep shadows, dramatic lighting,",tags:["コントラスト","影"]}
+];
+
+// HTML側に追加した初期データだけを、既存データを消さずに取り込む。
+// 一度確認した初期プロンプトは記録するため、ユーザーが後から削除しても勝手に復活しない。
+if(!Array.isArray(data.categories)) data.categories=[];
+if(!Array.isArray(data.prompts)) data.prompts=[];
+if(!Array.isArray(data.seededDefaultPrompts)) data.seededDefaultPrompts=[];
+
+DEFAULT_CATEGORIES.forEach(c=>{
+  if(!data.categories.some(x=>x.name===c.name)){
+    data.categories.push({...c});
+  }
+});
+
+function defaultPromptKey(p){
+  return [p.title,p.category,p.type,p.text].join("\u001f");
+}
+
+DEFAULT_PROMPTS.forEach(p=>{
+  const key=defaultPromptKey(p);
+
+  if(!data.seededDefaultPrompts.includes(key)){
+    const exists=data.prompts.some(x=>
+      x.title===p.title &&
+      x.category===p.category &&
+      x.type===p.type &&
+      x.text===p.text
+    );
+
+    if(!exists){
+      data.prompts.push({...p,tags:[...p.tags]});
+    }
+
+    data.seededDefaultPrompts.push(key);
+  }
+});
+
+saveData();
+
 let active="ALL", editIndex=null;
 
 function saveData(){localStorage.setItem(KEY,JSON.stringify(data));}
@@ -510,7 +553,7 @@ function updateBuilderOptions(){
 }
 
 function getBuilderPositive(){
-  return [bChar.value,bBase.value,bFace.value,bPose.value]
+  return [bChar.value,bBase.value]
     .map(x=>x.trim())
     .filter(Boolean)
     .join(", ");
