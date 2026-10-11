@@ -73,6 +73,38 @@ h1{font-size:27px;margin:0;font-weight:750;letter-spacing:.04em}
   border:1px solid var(--line);background:white;border-radius:9px;padding:7px 9px;color:#666;
 }
 .copy{background:var(--accent);border-color:var(--accent);color:white;font-weight:650}
+.builder-toggle{
+  position:relative;
+  flex:0 0 42px;
+  width:42px;
+  height:24px;
+  min-width:42px;
+  padding:0;
+  border:0;
+  border-radius:999px;
+  background:#dedee3;
+  cursor:pointer;
+  transition:background .18s ease;
+  vertical-align:middle;
+}
+.builder-toggle::after{
+  content:"";
+  position:absolute;
+  top:3px;
+  left:3px;
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);
+  transition:transform .18s ease;
+}
+.builder-toggle.active{background:#59d968}
+.builder-toggle.active::after{transform:translateX(18px)}
+.builder-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.builder-toggle:active::after{width:20px}
+
+
 .empty{text-align:center;color:var(--muted);padding:70px 20px}
 .builder{
   margin-top:30px;background:white;border:1px solid var(--line);border-radius:22px;
@@ -361,9 +393,20 @@ function render(){
         <div class="prompt">${esc(p.text)}</div>
         <div class="meta">
           <div class="tags"><span class="tag" style="color:${cat?.color||'var(--accent)'}">${esc(p.category)}</span>${p.tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join("")}</div>
-          <div class="actions"><button class="iconbtn" onclick="editPrompt(${real})">編集</button><button class="iconbtn copy" onclick="copyText(${real})">コピー</button></div>
+          <div class="actions"><button class="iconbtn" onclick="editPrompt(${real})">編集</button><button class="iconbtn copy" onclick="copyText(${real})">コピー</button><button type="button" class="builder-toggle" id="builderToggle-${real}" role="switch" aria-checked="false" aria-label="Builderに追加" title="Builderに追加" onclick="toggleBuilderPrompt(${real})"></button></div>
         </div>
       </article>`;
+  });
+  data.prompts.forEach((p,i)=>{
+    const type=p.type==="negative"?"negative":"positive";
+    const selected=builderPromptSelections[type].includes(promptSelectionKey(p));
+    const button=document.getElementById(`builderToggle-${i}`);
+    if(button){
+      button.classList.toggle("active",selected);
+      button.setAttribute("aria-checked",String(selected));
+      button.setAttribute("aria-label",selected?"Builderから解除":"Builderに追加");
+      button.title=selected?"クリックするとBuilderから解除":"クリックするとBuilderに追加";
+    }
   });
 }
 function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
@@ -518,16 +561,88 @@ function openPromptModal(index=null){
 function closeModal(){modal.classList.remove("show");editIndex=null;}
 function savePrompt(){
   const p={title:pTitle.value.trim()||"無題",category:pCategory.value,type:pType.value,text:pText.value.trim(),tags:pTags.value.split(",").map(x=>x.trim()).filter(Boolean)};
-  if(editIndex===null)data.prompts.unshift(p);else data.prompts[editIndex]=p;
+  if(editIndex===null)data.prompts.unshift(p);else{
+    const old=data.prompts[editIndex];
+    const oldKey=promptSelectionKey(old);
+    Object.keys(builderPromptSelections).forEach(type=>{
+      builderPromptSelections[type]=builderPromptSelections[type].filter(key=>key!==oldKey);
+    });
+    data.prompts[editIndex]=p;
+  }
   saveData();closeModal();render();updateBuilderOptions();
 }
 function editPrompt(i){openPromptModal(i)}
-function deletePrompt(i){if(confirm("このプロンプトを削除しますか？")){data.prompts.splice(i,1);saveData();render();updateBuilderOptions();}}
+function deletePrompt(i){
+  if(confirm("このプロンプトを削除しますか？")){
+    const old=data.prompts[i];
+    const oldKey=promptSelectionKey(old);
+    Object.keys(builderPromptSelections).forEach(type=>{
+      builderPromptSelections[type]=builderPromptSelections[type].filter(key=>key!==oldKey);
+    });
+    if(old.type==="positive" && finalPromptManual) finalPrompt.value=removePromptText(finalPrompt.value,old.text);
+    if(old.type==="negative" && finalNegativeManual) finalNegative.value=removePromptText(finalNegative.value,old.text);
+    data.prompts.splice(i,1);saveData();render();updateBuilderOptions();
+  }
+}
 async function copyText(i){await navigator.clipboard.writeText(data.prompts[i].text);alert("コピーしました。");}
 let finalPromptManual=false;
 let finalNegativeManual=false;
 let lastBuilderPositive="";
 let lastBuilderNegative="";
+let builderPromptSelections={positive:[],negative:[]};
+
+function promptSelectionKey(p){
+  return JSON.stringify([p.title,p.category,p.type,p.text]);
+}
+function selectedBuilderPrompts(type){
+  return builderPromptSelections[type]
+    .map(key=>data.prompts.find(p=>promptSelectionKey(p)===key && p.type===type))
+    .filter(Boolean);
+}
+function joinPromptParts(parts){
+  return parts.map(x=>String(x||"").trim()).filter(Boolean).join(", ");
+}
+function composeBuilderPositive(){
+  return joinPromptParts([getBuilderPositive(),...selectedBuilderPrompts("positive").map(p=>p.text)]);
+}
+function composeBuilderNegative(){
+  return joinPromptParts([getBuilderNegative(),...selectedBuilderPrompts("negative").map(p=>p.text)]);
+}
+function appendPromptText(current,text){
+  const trimmed=String(text||"").trim();
+  if(!trimmed)return current;
+  if(current.split(",").map(x=>x.trim()).includes(trimmed))return current;
+  return joinPromptParts([current,trimmed]);
+}
+function removePromptText(current,text){
+  const target=String(text||"").trim();
+  let value=String(current||"");
+  if(!target)return value;
+  // Prompt snippets often contain commas, so remove the whole snippet rather than splitting by commas.
+  value=value.replace(target,"");
+  value=value.replace(/\\s*,\\s*,+/g,", ");
+  value=value.replace(/^\\s*,\\s*|\\s*,\\s*$/g,"");
+  return value.trim();
+}
+function toggleBuilderPrompt(index){
+  const p=data.prompts[index];
+  if(!p)return;
+  const type=p.type==="negative"?"negative":"positive";
+  const key=promptSelectionKey(p);
+  const list=builderPromptSelections[type];
+  const selected=list.includes(key);
+  if(selected){
+    builderPromptSelections[type]=list.filter(x=>x!==key);
+    if(type==="positive" && finalPromptManual) finalPrompt.value=removePromptText(finalPrompt.value,p.text);
+    if(type==="negative" && finalNegativeManual) finalNegative.value=removePromptText(finalNegative.value,p.text);
+  }else{
+    builderPromptSelections[type]=[...list,key];
+    if(type==="positive" && finalPromptManual) finalPrompt.value=appendPromptText(finalPrompt.value,p.text);
+    if(type==="negative" && finalNegativeManual) finalNegative.value=appendPromptText(finalNegative.value,p.text);
+  }
+  syncBuilderToFinal(false);
+  render();
+}
 
 function updateBuilderOptions(){
   const baseSelect=document.getElementById("bBase");
@@ -574,8 +689,8 @@ function getBuilderNegative(){
 }
 
 function syncBuilderToFinal(force=false){
-  const positive=getBuilderPositive();
-  const negative=getBuilderNegative();
+  const positive=composeBuilderPositive();
+  const negative=composeBuilderNegative();
 
   if(force || !finalPromptManual || finalPrompt.value.trim()==="" || finalPrompt.value===lastBuilderPositive){
     finalPrompt.value=positive;
